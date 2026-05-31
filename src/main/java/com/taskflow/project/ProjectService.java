@@ -49,7 +49,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponseDto getProjectById(Long projectId, Long userId) {
         Project project = findProjectById(projectId);
-        validateMember(projectId, userId);
+        validateMember(project, userId);
 
         return projectMapper.toResponseDto(project);
     }
@@ -57,7 +57,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponseDto updateProject(Long projectId, @Valid ProjectUpdateDto projectUpdateDto, Long userId) {
         Project project = findProjectById(projectId);
-        validateOwner(projectId, userId);
+        validateOwner(project, userId);
 
         projectMapper.updateEntityFromDto(projectUpdateDto, project);
         projectRepository.save(project);
@@ -67,7 +67,7 @@ public class ProjectService {
     @Transactional
     public void deleteProject(Long projectId, Long userId) {
         Project project = findProjectById(projectId);
-        validateOwner(projectId, userId);
+        validateOwner(project, userId);
 
         project.softDelete();
         projectRepository.save(project);
@@ -76,7 +76,7 @@ public class ProjectService {
     @Transactional
     public void addMember(Long projectId, @Valid MemberRequestDto memberRequestDto, Long userId) {
         Project project = findProjectById(projectId);
-        validateOwner(projectId, userId);
+        validateOwner(project, userId);
 
         User newMember = userService.findUserById(memberRequestDto.getUserId());
 
@@ -90,8 +90,8 @@ public class ProjectService {
 
     @Transactional
     public void updateMemberRole(Long projectId, Long memberId, @Valid MemberUpdateDto memberUpdateDto, Long userId) {
-        findProjectById(projectId);
-        validateOwner(projectId, userId);
+        Project project = findProjectById(projectId);
+        validateOwner(project, userId);
 
         ProjectMember isMember = projectMemberRepository.findByProject_IdAndUser_Id(projectId, memberId)
                 .orElseThrow(() -> new AppException("Project member not found with id: " + memberId, HttpStatus.NOT_FOUND));
@@ -102,8 +102,8 @@ public class ProjectService {
 
     @Transactional
     public void removeMember(Long projectId, Long memberId, Long userId) {
-        findProjectById(projectId);
-        validateOwner(projectId, userId);
+        Project project = findProjectById(projectId);
+        validateOwner(project, userId);
 
         ProjectMember isMember = projectMemberRepository.findByProject_IdAndUser_Id(projectId, memberId)
                 .orElseThrow(() -> new AppException("Project member not found with id: " + memberId, HttpStatus.NOT_FOUND));
@@ -123,17 +123,17 @@ public class ProjectService {
                 .orElseThrow(() -> new AppException("Project not found with id: " + projectId , HttpStatus.NOT_FOUND));
     }
 
-    public void validateMember(Long projectId, Long userId) {
+    public void validateMember(Project project, Long userId) {
         User user = userService.findUserById(userId);
-        Project project = findProjectById(projectId);
+
         if (!projectMemberRepository.existsByProjectAndUserAndIsDeletedFalse(project, user)) {
             throw new AppException( user.getName()+ " is not a project member", HttpStatus.FORBIDDEN);
         }
     }
 
-    private void validateOwner(Long projectId, Long userId) {
+    public void validateOwner(Project project, Long userId) {
         User user = userService.findUserById(userId);
-        Project project = findProjectById(projectId);
+
         if (!projectMemberRepository.existsByProjectAndUserAndRole(project, user, ProjectRole.OWNER)) {
             throw new AppException("Only project owner can perform this action", HttpStatus.FORBIDDEN);
         }
