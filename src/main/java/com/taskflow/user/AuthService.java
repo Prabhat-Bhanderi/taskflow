@@ -42,6 +42,10 @@ public class AuthService {
         User user = userRepository.findByEmail(loginRequestDto.getEmail())
                 .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
 
+        if (!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+            throw new AppException("Invalid email or password", HttpStatus.UNAUTHORIZED);
+        }
+
         String accessToken = jwtUtil.generateAccessToken(user.getId());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
