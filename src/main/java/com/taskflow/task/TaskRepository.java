@@ -28,11 +28,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     Page<Task> findByProjectAndAssigneeAndParentIsNullAndIsDeletedFalse(Project project, User assignee, Pageable pageable);
 
     // get single task
-    Optional<Task> findByIdAndIsDeletedFalse(Long id);
+    Optional<Task> findByIdAndProjectIdAndIsDeletedFalse(Long id, Long projectId);
 
     // get all subtasks of a task
     List<Task> findByParentAndIsDeletedFalse(Task parent);
 
-    // check task belongs to project
-    boolean existsByIdAndProjectAndIsDeletedFalse(Long id, Project project);
 }

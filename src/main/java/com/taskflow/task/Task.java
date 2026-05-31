@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -65,6 +66,7 @@ public class Task extends BaseEntity {
     private Task parent;
 
     @OneToMany(mappedBy = "parent" , fetch = FetchType.LAZY)
+    @SQLRestriction("is_deleted = false")
     private List<Task> subTasks = new ArrayList<>();
 
 }
