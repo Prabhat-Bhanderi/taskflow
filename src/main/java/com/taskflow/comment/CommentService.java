@@ -1,5 +1,9 @@
 package com.taskflow.comment;
 
+import com.taskflow.audit.AuditLogService;
+import com.taskflow.common.JsonUtil;
+import com.taskflow.common.enums.AuditAction;
+import com.taskflow.common.enums.EntityType;
 import com.taskflow.common.exception.AppException;
 import com.taskflow.comment.dto.CommentRequestDto;
 import com.taskflow.comment.dto.CommentResponseDto;
@@ -18,6 +22,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class CommentService {
@@ -27,6 +34,7 @@ public class CommentService {
     private final TaskService taskService;
     private final ProjectService projectService;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     // ── Add Comment ───────────────────────────────────────────────
     @Transactional
@@ -41,6 +49,8 @@ public class CommentService {
         comment.setTask(task);
         comment.setAuthor(author);
         commentRepository.save(comment);
+
+        auditLogService.log(EntityType.COMMENT, comment.getId(), AuditAction.CREATE, null, userId);
 
         return commentMapper.toResponseDto(comment);
     }
@@ -75,8 +85,16 @@ public class CommentService {
         Comment comment = findCommentById(commentId);
         validateAuthor(commentId, userId);
 
+        Map<String, Object> changes = new HashMap<>();
+        if (!dto.getContent().equals(comment.getContent()))
+            changes.put("content", Map.of("old", comment.getContent(), "new", dto.getContent()));
+
         commentMapper.updateEntityFromDto(dto, comment);
         commentRepository.save(comment);
+
+        auditLogService.log(EntityType.COMMENT, commentId, AuditAction.UPDATE,
+                JsonUtil.toJson(changes), userId);
+
         return commentMapper.toResponseDto(comment);
     }
 
@@ -93,6 +111,9 @@ public class CommentService {
 
         comment.softDelete();
         commentRepository.save(comment);
+
+        auditLogService.log(EntityType.COMMENT, commentId, AuditAction.DELETE, null, userId);
+
     }
 
     // ── Internal Helpers ──────────────────────────────────────────

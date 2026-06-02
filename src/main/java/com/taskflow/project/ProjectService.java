@@ -1,5 +1,9 @@
 package com.taskflow.project;
 
+import com.taskflow.audit.AuditLogService;
+import com.taskflow.common.JsonUtil;
+import com.taskflow.common.enums.AuditAction;
+import com.taskflow.common.enums.EntityType;
 import com.taskflow.common.enums.ProjectRole;
 import com.taskflow.common.exception.AppException;
 import com.taskflow.project.dto.*;
@@ -11,7 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +27,7 @@ public class ProjectService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectMapper projectMapper;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public ProjectResponseDto createProject(@Valid ProjectRequestDto projectRequestDto, Long userId) {
@@ -32,6 +39,8 @@ public class ProjectService {
 
         ProjectMember owner = new ProjectMember(project, user, ProjectRole.OWNER);
         projectMemberRepository.save(owner);
+
+        auditLogService.log(EntityType.PROJECT, project.getId(), AuditAction.CREATE, null, userId);
 
         return projectMapper.toResponseDto(project);
     }
@@ -59,8 +68,19 @@ public class ProjectService {
         Project project = findProjectById(projectId);
         validateOwner(project, userId);
 
+        Map<String, Object> changes = new HashMap<>();
+        if (projectUpdateDto.getName() != null && !projectUpdateDto.getName().equals(project.getName()))
+            changes.put("name", Map.of("old", project.getName(), "new", projectUpdateDto.getName()));
+        if (projectUpdateDto.getDescription() != null && !projectUpdateDto.getDescription().equals(project.getDescription()))
+            changes.put("description", Map.of("old", project.getDescription(), "new", projectUpdateDto.getDescription()));
+
+
         projectMapper.updateEntityFromDto(projectUpdateDto, project);
         projectRepository.save(project);
+
+        auditLogService.log(EntityType.PROJECT, projectId, AuditAction.UPDATE,
+                JsonUtil.toJson(changes), userId);
+
         return projectMapper.toResponseDto(project);
     }
 
@@ -71,6 +91,9 @@ public class ProjectService {
 
         project.softDelete();
         projectRepository.save(project);
+
+        auditLogService.log(EntityType.PROJECT, projectId, AuditAction.DELETE, null, userId);
+
     }
 
     @Transactional

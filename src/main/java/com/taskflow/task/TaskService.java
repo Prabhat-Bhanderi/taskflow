@@ -1,10 +1,13 @@
 package com.taskflow.task;
 
+import com.taskflow.audit.AuditLogService;
+import com.taskflow.common.JsonUtil;
+import com.taskflow.common.enums.AuditAction;
+import com.taskflow.common.enums.EntityType;
 import com.taskflow.common.enums.TaskPriority;
 import com.taskflow.common.exception.AppException;
 import com.taskflow.common.enums.TaskStatus;
 import com.taskflow.project.Project;
-import com.taskflow.project.ProjectMemberRepository;
 import com.taskflow.project.ProjectService;
 import com.taskflow.task.dto.*;
 import com.taskflow.user.User;
@@ -18,7 +21,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final ProjectService projectService;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     // ── Create Task ───────────────────────────────────────────────
     @Transactional
@@ -47,6 +53,7 @@ public class TaskService {
         }
 
         taskRepository.save(task);
+        auditLogService.log(EntityType.TASK, task.getId(), AuditAction.CREATE, null, userId);
         return taskMapper.toResponseDto(task);
     }
 
@@ -106,6 +113,22 @@ public class TaskService {
         projectService.validateMember(project, userId);
         Task task = findTaskById(taskId, projectId);
 
+        Map<String, Object> changes = new HashMap<>();
+        if (dto.getTitle() != null && !dto.getTitle().equals(task.getTitle()))
+            changes.put("title", Map.of("old", task.getTitle(), "new", dto.getTitle()));
+        if (dto.getPriority() != null && !dto.getPriority().equals(task.getPriority()))
+            changes.put("priority", Map.of("old", task.getPriority(), "new", dto.getPriority()));
+        if (dto.getDescription() != null && !dto.getDescription().equals(task.getDescription()))
+            changes.put("description", Map.of("old", task.getDescription(), "new", dto.getDescription()));
+        if (dto.getStartDate() != null && !dto.getStartDate().equals(task.getStartDate()))
+            changes.put("startDate", Map.of("old", task.getStartDate(), "new", dto.getStartDate()));
+        if (dto.getDueDate() != null && !dto.getDueDate().equals(task.getDueDate()))
+            changes.put("dueDate", Map.of("old", task.getDueDate(), "new", dto.getDueDate()));
+        if (dto.getAssigneeId() != null)
+            changes.put("assigneeId", Map.of(
+                    "old", task.getAssignee() != null ? task.getAssignee().getId() : "null",
+                    "new", dto.getAssigneeId()));
+
         if (dto.getAssigneeId() != null) {
             User assignee = userService.findUserById(dto.getAssigneeId());
             projectService.validateMember(project, assignee.getId());
@@ -114,6 +137,9 @@ public class TaskService {
 
         taskMapper.updateEntityFromDto(dto, task);
         Task updatedTask = taskRepository.save(task);
+
+        auditLogService.log(EntityType.TASK, taskId, AuditAction.UPDATE,
+                JsonUtil.toJson(changes), userId);
 
         return taskMapper.toResponseDto(updatedTask);
     }
@@ -126,8 +152,16 @@ public class TaskService {
         projectService.validateMember(project, userId);
         Task task = findTaskById(taskId, projectId);
         validateStatusTransition(task.getStatus(), dto.getStatus());
+
+        Map<String, Object> changes = new HashMap<>();
+        changes.put("status", Map.of("old", task.getStatus(), "new", dto.getStatus()));
+
         task.setStatus(dto.getStatus());
         taskRepository.save(task);
+
+        auditLogService.log(EntityType.TASK, taskId, AuditAction.UPDATE,
+                JsonUtil.toJson(changes), userId);
+
         return taskMapper.toResponseDto(task);
     }
 
@@ -149,6 +183,8 @@ public class TaskService {
 
         task.softDelete();
         taskRepository.save(task);
+
+        auditLogService.log(EntityType.TASK, taskId, AuditAction.DELETE, null, userId);
     }
 
     // ── Create Subtask ────────────────────────────────────────────
