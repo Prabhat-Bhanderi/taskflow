@@ -2,6 +2,7 @@ package com.taskflow.user;
 
 import com.taskflow.user.dto.AuthResponseDto;
 import com.taskflow.user.dto.LoginRequestDto;
+import com.taskflow.user.dto.RefreshTokenRequestDto;
 import com.taskflow.user.dto.RegisterRequestDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,8 +35,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDto> refresh(
-            @RequestBody String refreshToken
+            @RequestBody RefreshTokenRequestDto refreshTokenRequestDto
     ) {
-        return ResponseEntity.ok(authService.refresh(refreshToken));
+        return ResponseEntity.ok(authService.refresh(refreshTokenRequestDto.getRefreshToken()));
     }
 }

@@ -32,6 +32,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        System.out.println(ex.getMessage());
         return buildResponse("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
