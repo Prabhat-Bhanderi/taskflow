@@ -2,6 +2,7 @@ package com.taskflow.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,7 +28,12 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .findFirst()
                 .orElse("Validation error");
-        return buildResponse(message, HttpStatus.UNPROCESSABLE_ENTITY);
+        return buildResponse(message, HttpStatus.UNPROCESSABLE_CONTENT);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentialsException(BadCredentialsException ex) {
+        return buildResponse("Invalid email or password", HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)
