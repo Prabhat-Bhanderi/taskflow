@@ -42,9 +42,9 @@ public class CommentService {
     public CommentResponseDto addComment(Long taskId, Long projectId,
                                          CommentRequestDto dto, Long userId) {
         Project project = projectService.findProjectById(projectId);
-        projectService.validateMember(project, userId);
         Task task = taskService.findTaskById(taskId, projectId);
         User author = userService.findUserById(userId);
+        projectService.validateMember(project, author);
 
         Comment comment = commentMapper.toEntity(dto);
         comment.setTask(task);

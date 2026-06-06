@@ -160,6 +160,18 @@ public class ProjectService {
                 .orElseThrow(() -> new AppException("Project not found with id: " + projectId , HttpStatus.NOT_FOUND));
     }
 
+    public void validateMember(Project project, User user) {
+        if (!projectMemberRepository.existsByProjectAndUserAndIsDeletedFalse(project, user)) {
+            throw new AppException( user.getName()+ " is not a project member", HttpStatus.FORBIDDEN);
+        }
+    }
+
+    public void validateOwner(Project project, User user) {
+        if (!projectMemberRepository.existsByProjectAndUserAndRole(project, user, ProjectRole.OWNER)) {
+            throw new AppException("Only project owner can perform this action", HttpStatus.FORBIDDEN);
+        }
+    }
+
     public void validateMember(Project project, Long userId) {
         User user = userService.findUserById(userId);
 

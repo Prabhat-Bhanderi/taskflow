@@ -43,7 +43,7 @@ public class TaskService {
     public TaskResponseDto createTask(Long projectId, TaskRequestDto dto, Long userId) {
         Project project = projectService.findProjectById(projectId);
         User creator = userService.findUserById(userId);
-        projectService.validateMember(project, userId);
+        projectService.validateMember(project, creator);
 
         Task task = taskMapper.toEntity(dto);
         task.setProject(project);
@@ -51,7 +51,7 @@ public class TaskService {
 
         if (dto.getAssigneeId() != null) {
             User assignee = userService.findUserById(dto.getAssigneeId());
-            projectService.validateMember(project, assignee.getId());
+            projectService.validateMember(project, assignee);
             task.setAssignee(assignee);
         }
 
@@ -134,7 +134,7 @@ public class TaskService {
 
         if (dto.getAssigneeId() != null) {
             User assignee = userService.findUserById(dto.getAssigneeId());
-            projectService.validateMember(project, assignee.getId());
+            projectService.validateMember(project, assignee);
             task.setAssignee(assignee);
         }
 
@@ -214,7 +214,7 @@ public class TaskService {
 
         if (dto.getAssigneeId() != null) {
             User assignee = userService.findUserById(dto.getAssigneeId());
-            projectService.validateMember(project, assignee.getId());
+            projectService.validateMember(project, assignee);
             subTask.setAssignee(assignee);
         }
 
