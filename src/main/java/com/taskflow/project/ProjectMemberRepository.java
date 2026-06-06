@@ -9,8 +9,6 @@ import java.util.Optional;
 
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
-    Optional<ProjectMember> findByProjectAndUser(Project project, User user);
-
     List<ProjectMember> findByUser_IdAndIsDeletedFalse(Long userId);
 
     List<ProjectMember> findByProject_IdAndIsDeletedFalse(Long projectId);

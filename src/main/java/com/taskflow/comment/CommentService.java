@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -126,5 +127,17 @@ public class CommentService {
         if (!commentRepository.existsByIdAndAuthor_IdAndIsDeletedFalse(commentId, userId)) {
             throw new AppException("Can only edit your own comment", HttpStatus.FORBIDDEN);
         }
+    }
+
+    public void deleteAllCommentsByTaskId(Long taskId, Long userId) {
+       List<Comment> comments = commentRepository.findByTaskIdAndIsDeletedFalse(taskId);
+       if (comments.isEmpty())
+           return;
+
+        comments.forEach(comment -> {
+            comment.softDelete();
+            commentRepository.save(comment);
+            auditLogService.log(EntityType.COMMENT, comment.getId(), AuditAction.CASCADE_DELETE, null, userId);
+        });
     }
 }

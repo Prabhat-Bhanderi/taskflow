@@ -10,9 +10,11 @@ import com.taskflow.common.enums.TaskStatus;
 import com.taskflow.project.Project;
 import com.taskflow.project.ProjectService;
 import com.taskflow.task.dto.*;
+import com.taskflow.task.event.TaskDeletedEvent;
 import com.taskflow.user.User;
 import com.taskflow.user.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,7 @@ public class TaskService {
     private final ProjectService projectService;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ── Create Task ───────────────────────────────────────────────
     @Transactional
@@ -179,12 +182,16 @@ public class TaskService {
         subTasks.forEach(subTask -> {
             subTask.softDelete();
             taskRepository.save(subTask);
+            eventPublisher.publishEvent(new TaskDeletedEvent(subTask.getId(), userId));
+            auditLogService.log(EntityType.TASK, subTask.getId(), AuditAction.DELETE, null, userId);
         });
 
         task.softDelete();
         taskRepository.save(task);
 
         auditLogService.log(EntityType.TASK, taskId, AuditAction.DELETE, null, userId);
+
+        eventPublisher.publishEvent(new TaskDeletedEvent(taskId, userId));
     }
 
     // ── Create Subtask ────────────────────────────────────────────
@@ -236,6 +243,8 @@ public class TaskService {
         Task subTask = findTaskById(subtaskId, projectId);
         subTask.softDelete();
         taskRepository.save(subTask);
+        auditLogService.log(EntityType.TASK, subtaskId, AuditAction.DELETE, null, userId);
+        eventPublisher.publishEvent(new TaskDeletedEvent(subtaskId, userId));
     }
 
     // ── Internal Helpers ──────────────────────────────────────────
@@ -257,5 +266,17 @@ public class TaskService {
                     HttpStatus.BAD_REQUEST
             );
         }
+    }
+
+    public void deleteAllTasksByProjectId(Long projectId, Long userId) {
+        List<Task> tasks = taskRepository.findByProjectIdAndIsDeletedFalse(projectId);
+        if (tasks.isEmpty()) return;
+
+        tasks.forEach(task -> {
+            task.softDelete();
+            taskRepository.save(task);
+            auditLogService.log(EntityType.TASK, task.getId(), AuditAction.CASCADE_DELETE, null, userId);
+            eventPublisher.publishEvent(new TaskDeletedEvent(task.getId(), userId));
+        });
     }
 }

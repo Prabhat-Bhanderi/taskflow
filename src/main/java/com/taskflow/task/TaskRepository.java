@@ -33,4 +33,5 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     // get all subtasks of a task
     List<Task> findByParentAndIsDeletedFalse(Task parent);
 
+    List<Task> findByProjectIdAndIsDeletedFalse(Long projectId);
 }

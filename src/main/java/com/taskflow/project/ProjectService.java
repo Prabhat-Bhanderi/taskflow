@@ -7,11 +7,13 @@ import com.taskflow.common.enums.EntityType;
 import com.taskflow.common.enums.ProjectRole;
 import com.taskflow.common.exception.AppException;
 import com.taskflow.project.dto.*;
+import com.taskflow.project.event.ProjectDeletedEvent;
 import com.taskflow.user.User;
 import com.taskflow.user.UserService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,7 @@ public class ProjectService {
     private final ProjectMapper projectMapper;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public ProjectResponseDto createProject(@Valid ProjectRequestDto projectRequestDto, Long userId) {
@@ -92,8 +95,16 @@ public class ProjectService {
         project.softDelete();
         projectRepository.save(project);
 
+        projectMemberRepository.findByProject_IdAndIsDeletedFalse(projectId)
+                .forEach(member -> {
+                    member.softDelete();
+                    projectMemberRepository.save(member);
+                    auditLogService.log(EntityType.PROJECT_MEMBER, projectId, AuditAction.CASCADE_DELETE, null, userId);
+                });
+
         auditLogService.log(EntityType.PROJECT, projectId, AuditAction.DELETE, null, userId);
 
+        eventPublisher.publishEvent(new ProjectDeletedEvent(projectId, userId));
     }
 
     @Transactional
@@ -109,6 +120,8 @@ public class ProjectService {
 
         ProjectMember member = new ProjectMember(project, newMember, memberRequestDto.getRole());
         projectMemberRepository.save(member);
+
+        auditLogService.log(EntityType.PROJECT_MEMBER, projectId, AuditAction.CREATE, null, userId);
     }
 
     @Transactional
@@ -138,6 +151,7 @@ public class ProjectService {
         isMember.softDelete();
         projectMemberRepository.save(isMember);
 
+        auditLogService.log(EntityType.PROJECT_MEMBER, projectId, AuditAction.DELETE, null, userId);
     }
 
     // Internal Helper
