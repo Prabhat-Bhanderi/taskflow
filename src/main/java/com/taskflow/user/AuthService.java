@@ -17,6 +17,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
     private final JwtUtil jwtUtil;
 
     @Transactional
@@ -58,6 +59,10 @@ public class AuthService {
         }
 
         Long userId = jwtUtil.extractUserId(refreshToken);
+
+        // validate user still exists
+        userService.findUserById(userId);
+
         String newAccessToken = jwtUtil.generateAccessToken(userId);
         String newRefreshToken = jwtUtil.generateRefreshToken(userId);
 
