@@ -30,10 +30,10 @@ public class BaseEntity {
     @Column(nullable = false)
     private boolean isDeleted = false;
 
-    private LocalDateTime deleteAt;
+    private LocalDateTime deletedAt;
 
     public void softDelete(){
         this.isDeleted = true;
-        this.deleteAt = LocalDateTime.now();
+        this.deletedAt = LocalDateTime.now();
     }
 }
